@@ -15,6 +15,7 @@ import com.example.filtros.Adapter.ThumbnailAdapter
 import com.example.filtros.Interface.FilterListFragmentListener
 import com.example.filtros.Utils.BitmapUtils
 import com.example.filtros.Utils.SpaceItemDecoration
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.zomato.photofilters.FilterPack
 import com.zomato.photofilters.imageprocessors.Filter
 import com.zomato.photofilters.utils.ThumbnailItem
@@ -22,12 +23,25 @@ import com.zomato.photofilters.utils.ThumbnailsManager
 import kotlinx.android.synthetic.main.fragment_filter_list.*
 
 
-class FilterListFragment : Fragment(), FilterListFragmentListener {
+class FilterListFragment : BottomSheetDialogFragment(), FilterListFragmentListener {
 
     internal lateinit var recycler_view:RecyclerView
     internal var listener: FilterListFragmentListener? = null
     internal lateinit var adapter: ThumbnailAdapter
     internal lateinit var thumbnailItemList: MutableList<ThumbnailItem>
+    companion object {
+        internal var instance: FilterListFragment? = null
+        internal var bitmap: Bitmap? = null
+
+        fun getInstance(bitmapSave: Bitmap?): FilterListFragment {
+            bitmap = bitmapSave
+            if (instance == null)
+            {
+                instance = FilterListFragment()
+            }
+            return instance !!
+        }
+    }
 
     fun setListener(listFragmentListener: FilterListFragmentListener) {
         this.listener = listFragmentListener
@@ -59,7 +73,7 @@ class FilterListFragment : Fragment(), FilterListFragmentListener {
         recycler_view.addItemDecoration(SpaceItemDecoration(space))
         recycler_view.adapter = adapter
 
-        displayImage(null)
+        displayImage(bitmap)
 
         return  itemView
     }

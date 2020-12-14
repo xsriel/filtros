@@ -7,19 +7,31 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import com.example.filtros.Interface.EditImageFragmentListener
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.android.synthetic.main.fragment_edit_image.*
 
-class EditImageFragment : Fragment(), SeekBar.OnSeekBarChangeListener {
+class EditImageFragment : BottomSheetDialogFragment(), SeekBar.OnSeekBarChangeListener {
 
     private var listener:EditImageFragmentListener? = null
-    internal  lateinit var seekbar_brightness: SeekBar
-    internal  lateinit var seekbar_saturation: SeekBar
-    internal  lateinit var seekbar_constrant: SeekBar
+    var seekbar_brightness: SeekBar? = null
+    var seekbar_saturation: SeekBar? = null
+    var seekbar_constrant: SeekBar? = null
+
+    companion object {
+        internal var instance: EditImageFragment? = null
+
+        fun getInstance(): EditImageFragment {
+            if (instance == null) {
+                instance = EditImageFragment()
+            }
+            return instance !!
+        }
+    }
 
     fun resetControls() {
-        seekbar_brightness.progress = 100
-        seekbar_constrant.progress = 0
-        seekbar_saturation.progress = 10
+        seekbar_brightness!!.progress = 100
+        seekbar_constrant!!.progress = 0
+        seekbar_saturation!!.progress = 10
     }
 
     fun setListener(listener: EditImageFragmentListener) {
@@ -40,18 +52,18 @@ class EditImageFragment : Fragment(), SeekBar.OnSeekBarChangeListener {
         seekbar_saturation = view.findViewById<SeekBar>(R.id.seekbar_saturation)
         seekbar_constrant = view.findViewById<SeekBar>(R.id.seekbar_constrant)
 
-        seekbar_brightness.max = 200
-        seekbar_brightness.progress = 100
+        seekbar_brightness!!.max = 200
+        seekbar_brightness!!.progress = 100
 
-        seekbar_constrant.max = 20
-        seekbar_constrant.progress = 0
+        seekbar_constrant!!.max = 20
+        seekbar_constrant!!.progress = 0
 
-        seekbar_saturation.max = 30
-        seekbar_saturation.progress = 10
+        seekbar_saturation!!.max = 30
+        seekbar_saturation!!.progress = 10
 
-        seekbar_brightness.setOnSeekBarChangeListener(this)
-        seekbar_constrant.setOnSeekBarChangeListener(this)
-        seekbar_saturation.setOnSeekBarChangeListener(this)
+        seekbar_brightness!!.setOnSeekBarChangeListener(this)
+        seekbar_constrant!!.setOnSeekBarChangeListener(this)
+        seekbar_saturation!!.setOnSeekBarChangeListener(this)
 
         return view
     }

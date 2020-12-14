@@ -4,14 +4,22 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/action_camara"
+        android:orderInCategory="99"
+        android:title="OPEN"
+        android:icon="@drawable/ic_baseline_photo_camera_24"
+        app:showAsAction="always"/>
+    <item
         android:id="@+id/action_open"
         android:orderInCategory="100"
         android:title="OPEN"
+        android:icon="@drawable/ic_baseline_image_search_24"
         app:showAsAction="always"/>
     <item
         android:id="@+id/action_save"
         android:orderInCategory="101"
         android:title="SAVE"
+        android:icon="@drawable/ic_baseline_save_24"
         app:showAsAction="always"/>
 
 </menu>

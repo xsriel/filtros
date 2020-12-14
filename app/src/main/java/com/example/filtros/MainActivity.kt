@@ -1,11 +1,13 @@
 package com.example.filtros
 
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.MediaStore
 import android.text.TextUtils
 import android.view.DragAndDropPermissions
 import android.view.Menu
@@ -26,8 +28,11 @@ import com.zomato.photofilters.imageprocessors.Filter
 import com.zomato.photofilters.imageprocessors.subfilters.BrightnessSubFilter
 import com.zomato.photofilters.imageprocessors.subfilters.ContrastSubFilter
 import com.zomato.photofilters.imageprocessors.subfilters.SaturationSubfilter
+import ja.burhanrashid52.photoeditor.OnSaveBitmap
+import ja.burhanrashid52.photoeditor.PhotoEditor
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.content_main.*
+import java.lang.Exception
 import com.karumi.dexter.MultiplePermissionsReport as MultiplePermissionsReport
 
 class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageFragmentListener {
@@ -39,9 +44,15 @@ class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageF
     internal lateinit var filterListFragment: FilterListFragment
     internal lateinit var editImageFragment: EditImageFragment
 
+    //Oliver Ordaz 09/12/2020 se agrega photo editor
+    lateinit var photoEditor:PhotoEditor
+
     internal var brightnessFinal = 0
     internal var saturationFinal = 1.0f
     internal var contrastFinal = 1.0f
+
+    internal var image_uri:Uri?=null
+    internal val CAMARA_REQUEST:Int=9999
 
     val SELECT_GALLERY_PERMISSION = 1000
 
@@ -62,10 +73,28 @@ class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageF
         setSupportActionBar(toolBar)
         supportActionBar!!.setDisplayHomeAsUpEnabled(true)
         supportActionBar!!.title="Filtros"
+        photoEditor = PhotoEditor.Builder(this@MainActivity,image_preview).setPinchTextScalable(true).build()
 
         loadImage()
-        setupViewPager(viewPager)
-        tabs.setupWithViewPager(viewPager)
+
+         filterListFragment = FilterListFragment.getInstance(null)
+         editImageFragment = EditImageFragment.getInstance()
+        btn_filter.setOnClickListener{
+            if (filterListFragment != null)
+            {
+                filterListFragment.show(supportFragmentManager, filterListFragment.tag)
+            }else
+            {
+                filterListFragment.setListener(this@MainActivity)
+                filterListFragment.show(supportFragmentManager, filterListFragment.tag)
+            }
+        }
+        btn_edit.setOnClickListener{
+            if (editImageFragment != null) {
+                editImageFragment.setListener(this@MainActivity)
+                editImageFragment.show(supportFragmentManager, editImageFragment.tag)
+            }
+        }
     }
 
     private fun setupViewPager(viewPager: NonSwipeableViewPager?) {
@@ -89,7 +118,7 @@ class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageF
         originalImage = BitmapUtils.getBitmapFromAssets(this, Main.IMAGE_NAME, 300, 300)
         filteredImage = originalImage!!.copy(Bitmap.Config.ARGB_8888, true)
         finalImage = originalImage!!.copy(Bitmap.Config.ARGB_8888, true)
-        image_preview.setImageBitmap(originalImage)
+        image_preview.source.setImageBitmap(originalImage)
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -107,7 +136,39 @@ class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageF
             saveImageToGallery()
             return true
         }
+        else if (id == R.id.action_camara) {
+            openCamara()
+            return true
+        }
         return super.onOptionsItemSelected(item)
+    }
+
+    private fun openCamara() {
+        Dexter.withActivity(this)
+                .withPermissions(android.Manifest.permission.CAMERA,
+                                 android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                .withListener(object : MultiplePermissionsListener {
+                    override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
+                        if (report!!.areAllPermissionsGranted())
+                        {
+                            val values = ContentValues()
+                            values.put(MediaStore.Images.Media.TITLE,"Nueva imagen")
+                            values.put(MediaStore.Images.Media.DESCRIPTION,"desde la camara")
+                            image_uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                            val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                            cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT,image_uri)
+                            startActivityForResult(cameraIntent,CAMARA_REQUEST)
+
+                        } else {
+                            Toast.makeText(applicationContext, "Permission denied", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>?, token: PermissionToken?) {
+                        token!!.continuePermissionRequest()
+                    }
+
+                }).check()
     }
 
     private fun openImageFromGallery() {
@@ -134,56 +195,89 @@ class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageF
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == Activity.RESULT_OK && requestCode == SELECT_GALLERY_PERMISSION) {
+        if (resultCode == Activity.RESULT_OK) {
+            if (requestCode == SELECT_GALLERY_PERMISSION) {
             val bitmap = BitmapUtils.getBitmapFromGallery(this, data?.data!!, 800, 800)
 
             originalImage!!.recycle()
             finalImage!!.recycle()
             filteredImage!!.recycle()
 
-            originalImage = bitmap.copy(Bitmap.Config.ARGB_8888,true)
-            filteredImage = originalImage!!.copy(Bitmap.Config.ARGB_8888,true)
-            finalImage = originalImage!!.copy(Bitmap.Config.ARGB_8888,true)
+            originalImage = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+            filteredImage = originalImage!!.copy(Bitmap.Config.ARGB_8888, true)
+            finalImage = originalImage!!.copy(Bitmap.Config.ARGB_8888, true)
+
+            image_preview.source.setImageBitmap(originalImage)
 
             bitmap.recycle()
 
-            filterListFragment.displayImage(bitmap)
-
+            filterListFragment = FilterListFragment.getInstance(originalImage!!)
+            filterListFragment.setListener(this)
         }
+            else if (requestCode == CAMARA_REQUEST) {
+                val bitmap = BitmapUtils.getBitmapFromGallery(this, image_uri!!, 800, 800)
+
+                originalImage!!.recycle()
+                finalImage!!.recycle()
+                filteredImage!!.recycle()
+
+                originalImage = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+                filteredImage = originalImage!!.copy(Bitmap.Config.ARGB_8888, true)
+                finalImage = originalImage!!.copy(Bitmap.Config.ARGB_8888, true)
+
+                image_preview.source.setImageBitmap(originalImage)
+
+                bitmap.recycle()
+
+                filterListFragment = FilterListFragment.getInstance(originalImage!!)
+                filterListFragment.setListener(this)
+            }
+    }
     }
 
-    private fun saveImageToGallery() = Dexter.withActivity(this)
-            .withPermissions(android.Manifest.permission.READ_EXTERNAL_STORAGE,
-            android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            .withListener(object: MultiplePermissionsListener{
-                override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
-                    if (report!!.areAllPermissionsGranted()) {
-                        val path = BitmapUtils.insertImage(contentResolver,
-                        finalImage,
-                        System.currentTimeMillis().toString() + "_profile.jpg",
-                        "")
-                        if (!TextUtils.isEmpty(path)) {
-                            val snackBar: Snackbar = Snackbar.make(coordinator, "Image saved to gallery", Snackbar.LENGTH_LONG)
-                                    .setAction("OPEN", {
-                                        openImage(path)
+    private fun saveImageToGallery() {
+        Dexter.withActivity(this)
+                .withPermissions(android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                        android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                .withListener(object : MultiplePermissionsListener {
+                    override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
+                        if (report!!.areAllPermissionsGranted()) {
+                            //Oliver Ordaz 11/12/2020 se agrega guardar foto con filtro en la galeria
+                            photoEditor.saveAsBitmap(object : OnSaveBitmap {
+                                override fun onBitmapReady(saveBitmap: Bitmap?) {
+                                    val path = BitmapUtils.insertImage(contentResolver,
+                                            saveBitmap,
+                                            System.currentTimeMillis().toString() + "_profile.jpg",
+                                            "")
+                                    if (!TextUtils.isEmpty(path)) {
+                                        val snackBar: Snackbar = Snackbar.make(coordinator, "Image saved to gallery", Snackbar.LENGTH_LONG)
+                                                .setAction("OPEN", {
+                                                    openImage(path)
+                                                })
+                                        snackBar.show()
+                                    } else {
+                                        val snackBar: Snackbar = Snackbar.make(coordinator, "unable to save image", Snackbar.LENGTH_LONG)
+                                        snackBar.show()
+                                    }
+                                }
+
+                                override fun onFailure(e: Exception?) {
+                                    val snackBar: Snackbar = Snackbar.make(coordinator, e!!.message.toString(), Snackbar.LENGTH_LONG)
+                                    snackBar.show()
+                                }
+
                             })
-                            snackBar.show()
-                        }
-                        else {
-                            val snackBar: Snackbar = Snackbar.make(coordinator, "Unable to save image", Snackbar.LENGTH_LONG)
-                            snackBar.show()
+                        } else {
+                            Toast.makeText(applicationContext, "Permission denied", Toast.LENGTH_SHORT).show()
                         }
                     }
-                    else {
-                        Toast.makeText(applicationContext, "Permission denied", Toast.LENGTH_SHORT).show()
+
+                    override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>?, token: PermissionToken?) {
+                        token!!.continuePermissionRequest()
                     }
-                }
 
-                override fun onPermissionRationaleShouldBeShown(permissions: MutableList<PermissionRequest>?, token: PermissionToken?) {
-                    token!!.continuePermissionRequest()
-                }
-
-            }).check()
+                }).check()
+    }
 
     private fun openImage(path: String?) {
         val intent =  Intent()
@@ -193,9 +287,9 @@ class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageF
     }
 
     override fun OnFilterSelected(filter: Filter) {
-        resetControls()
+        //resetControls()
         filteredImage = originalImage!!.copy(Bitmap.Config.ARGB_8888, true)
-        image_preview.setImageBitmap(filter.processFilter(filteredImage))
+        image_preview.source.setImageBitmap(filter.processFilter(filteredImage))
         finalImage = filteredImage.copy(Bitmap.Config.ARGB_8888, true)
 
     }
@@ -213,25 +307,24 @@ class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageF
         brightnessFinal = brightness
         val myFilter = Filter()
         myFilter.addSubFilter(BrightnessSubFilter(brightness))
-        image_preview.setImageBitmap(myFilter.processFilter(finalImage.copy(Bitmap.Config.ARGB_8888, true)))
+        image_preview.source.setImageBitmap(myFilter.processFilter(finalImage.copy(Bitmap.Config.ARGB_8888, true)))
     }
 
     override fun onSaturationChanged(saturation: Float) {
         saturationFinal = saturation
         val myFilter = Filter()
         myFilter.addSubFilter(SaturationSubfilter(saturation))
-        image_preview.setImageBitmap(myFilter.processFilter(finalImage.copy(Bitmap.Config.ARGB_8888, true)))
+        image_preview.source.setImageBitmap(myFilter.processFilter(finalImage.copy(Bitmap.Config.ARGB_8888, true)))
     }
 
     override fun onConstrantChanged(constrant: Float) {
         contrastFinal = constrant
         val myFilter = Filter()
         myFilter.addSubFilter(ContrastSubFilter(constrant))
-        image_preview.setImageBitmap(myFilter.processFilter(finalImage.copy(Bitmap.Config.ARGB_8888, true)))
+        image_preview.source.setImageBitmap(myFilter.processFilter(finalImage.copy(Bitmap.Config.ARGB_8888, true)))
     }
 
     override fun onEditStarted() {
-        TODO("Not yet implemented")
     }
 
     override fun onEditCompleted() {
