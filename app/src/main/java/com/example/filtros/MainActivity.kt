@@ -273,7 +273,7 @@ class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageF
                                         contentResolver,
                                         saveBitmap,
                                         filename,
-                                        "Firma creada desde Signature app"
+                                        "Foto con filtro"
                                     )
                                     if (!TextUtils.isEmpty(url)) {
                                         val snackBar: Snackbar = Snackbar.make(
