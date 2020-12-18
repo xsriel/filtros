@@ -268,7 +268,7 @@ class MainActivity : AppCompatActivity(), FilterListFragmentListener, EditImageF
                             photoEditor.saveAsBitmap(object : OnSaveBitmap {
                                 override fun onBitmapReady(saveBitmap: Bitmap?) {
                                     //val path = BitmapUtils.insertImage(contentResolver, saveBitmap, System.currentTimeMillis().toString() + "_profile.jpg", "")
-                                    val filename = "firma-" + System.currentTimeMillis() + ".png"
+                                    val filename = "filtroIMG-" + System.currentTimeMillis() + ".png"
                                     val url: String = MediaStore.Images.Media.insertImage(
                                         contentResolver,
                                         saveBitmap,
